@@ -1,0 +1,370 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Plus+Jakarta+Sans%3Awght%40400%3B500%3B700%3B800"
+    />
+
+    <title>Stitch Design</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      let reviews = {};
+      
+      // Initialize reviews data
+      function initializeReviews() {
+        const savedReviews = localStorage.getItem('productReviews');
+        if (savedReviews) {
+          reviews = JSON.parse(savedReviews);
+        }
+      }
+      
+      // Get average rating for a product
+      function getAverageRating(productName) {
+        if (!reviews[productName] || reviews[productName].length === 0) {
+          return 0;
+        }
+        const total = reviews[productName].reduce((sum, review) => sum + review.rating, 0);
+        return (total / reviews[productName].length).toFixed(1);
+      }
+      
+      // Get review count for a product
+      function getReviewCount(productName) {
+        return reviews[productName] ? reviews[productName].length : 0;
+      }
+      
+      // Function to show reviews modal
+      function showReviewsModal(productName) {
+        const productReviews = reviews[productName] || [];
+        const averageRating = getAverageRating(productName);
+        const reviewCount = getReviewCount(productName);
+        
+        let reviewsHTML = '';
+        if (productReviews.length > 0) {
+          reviewsHTML = productReviews.map(review => `
+            <div class="border-b border-gray-200 pb-3 mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex text-yellow-500">
+                    ${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}
+                  </div>
+                  <span class="font-medium text-sm">${review.user}</span>
+                </div>
+                <span class="text-xs text-gray-500">${review.date}</span>
+              </div>
+              <p class="text-sm text-gray-600">${review.comment}</p>
+            </div>
+          `).join('');
+        } else {
+          reviewsHTML = '<p class="text-gray-500 text-center py-4">No reviews yet. Be the first to review this product!</p>';
+        }
+        
+        const modalHTML = `
+          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-[#1b0e0e]">Reviews for ${productName}</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="mb-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="flex text-yellow-500 text-2xl">
+                    ${'★'.repeat(Math.floor(averageRating))}${averageRating % 1 >= 0.5 ? '☆' : ''}${'☆'.repeat(5-Math.floor(averageRating)-(averageRating % 1 >= 0.5 ? 1 : 0))}
+                  </div>
+                  <div>
+                    <div class="font-semibold">${averageRating} out of 5</div>
+                    <div class="text-sm text-gray-600">${reviewCount} review${reviewCount !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                ${reviewsHTML}
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+      }
+      
+      // Function to close modal
+      function closeModal() {
+        const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+        if (modal) {
+          modal.remove();
+        }
+      }
+      
+      // Function to automatically add review sections to all product cards
+      function addReviewSectionsToAllProducts() {
+        // Find all product cards
+        const productCards = document.querySelectorAll('.flex.h-full.flex-1.flex-col.gap-4.rounded-lg.min-w-40');
+        
+        productCards.forEach(card => {
+          // Find the product name
+          const productNameElement = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium');
+          if (!productNameElement) return;
+          
+          const productName = productNameElement.textContent;
+          
+          // Check if review section already exists
+          const existingReviewSection = card.querySelector('.reviews-section');
+          if (existingReviewSection) return;
+          
+          // Find the description paragraph
+          const descriptionElement = card.querySelector('p.text-\\[\\#666\\].text-xs.leading-normal.mb-2');
+          if (!descriptionElement) return;
+          
+          // Create review section
+          const reviewSection = document.createElement('div');
+          reviewSection.className = 'reviews-section flex items-center gap-2 mb-2';
+          
+          const avgRating = getAverageRating(productName);
+          const reviewCount = getReviewCount(productName);
+          
+          reviewSection.innerHTML = `
+            <div class="flex items-center gap-1">
+              <span class="text-yellow-500 text-xs">★</span>
+              <span class="text-xs text-gray-600" id="${productName.toLowerCase().replace(/\s+/g, '-')}-rating">${avgRating}</span>
+              <span class="text-xs text-gray-500">(${reviewCount})</span>
+            </div>
+            <button onclick="event.stopPropagation(); showReviewsModal('${productName}')" class="text-xs text-[#994d51] hover:underline">View Reviews</button>
+          `;
+          
+          // Insert after description
+          descriptionElement.parentNode.insertBefore(reviewSection, descriptionElement.nextSibling);
+        });
+      }
+      
+      // Initialize on page load
+      window.onload = function() {
+        initializeReviews();
+        setTimeout(() => {
+          addReviewSectionsToAllProducts();
+        }, 100);
+      };
+    </script>
+  </head>
+  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-[#fcf8f8] group/design-root overflow-x-hidden" style='font-family: "Plus Jakarta Sans", "Noto Sans", sans-serif;'>
+      <div class="layout-container flex h-full grow flex-col">
+        <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f3e7e8] px-10 py-3">
+          <div class="flex items-center gap-8">
+            <div class="flex items-center gap-4 text-[#1b0e0f]">
+              <div class="size-4">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <g clip-path="url(#clip0_6_535)">
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z"
+                      fill="currentColor"
+                    ></path>
+                  </g>
+                  <defs>
+                    <clipPath id="clip0_6_535"><rect width="48" height="48" fill="white"></rect></clipPath>
+                  </defs>
+                </svg>
+              </div>
+              <h2 class="text-[#1b0e0f] text-lg font-bold leading-tight tracking-[-0.015em]">FreshFoods</h2>
+            </div>
+            <div class="flex items-center gap-9">
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Deals.html'">Deals</a>
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='WhatsNewSection.html'">What's New</a>
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Notifications.html'">Reminders</a>
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Coupons.html'">Coupons</a>
+            </div>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
+            <label class="flex flex-col min-w-40 !h-10 max-w-64">
+              <div class="flex w-full flex-1 items-stretch rounded-xl h-full">
+                <div
+                  class="text-[#974e52] flex border-none bg-[#f3e7e8] items-center justify-center pl-4 rounded-l-xl border-r-0"
+                  data-icon="MagnifyingGlass"
+                  data-size="24px"
+                  data-weight="regular"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+                    ></path>
+                  </svg>
+                </div>
+                <input
+                  placeholder="Search"
+                  class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#1b0e0f] focus:outline-0 focus:ring-0 border-none bg-[#f3e7e8] focus:border-none h-full placeholder:text-[#974e52] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
+                  value=""
+                />
+              </div>
+            </label>
+            <div class="flex gap-2">
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 bg-[#f3e7e8] text-[#1b0e0f] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
+              >
+                <div class="text-[#1b0e0f]" data-icon="Heart" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M178,32c-20.65,0-38.73,8.88-50,23.89C116.73,40.88,98.65,32,78,32A62.07,62.07,0,0,0,16,94c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,220.66,240,164,240,94A62.07,62.07,0,0,0,178,32ZM128,206.8C109.74,196.16,32,147.69,32,94A46.06,46.06,0,0,1,78,48c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,147.61,146.24,196.15,128,206.8Z"
+                    ></path>
+                  </svg>
+                </div>
+              </button>
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 bg-[#f3e7e8] text-[#1b0e0f] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
+              >
+                <div class="text-[#1b0e0f]" data-icon="User" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"
+                    ></path>
+                  </svg>
+                </div>
+              </button>
+            </div>
+            <div
+              class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAtZL4G2fV4fDnMqRX7Ybr3_R7Kwmm2BdcmewxFqtqF6QzrOpRdesmL8dgT6B--qGZWsVuNw7Qd2FrUPkkCEdrACLP0fzfqc4FbUf_guoC0K18gzcjYWh39TAyrbMIfh5lQGwblKk_BQg7xk9ndxU_gDgiKo_DGFYmjmygFBlhqdQzXGe-U4RXmfgZsap7_KcUd2zUl_-g2GSC9on7m1htj1uZXwrn9AWQvItw7auD8sT_XAgzFU5woldadAc787ozscUiTbn0sM1Q");'
+            ></div>
+          </div>
+        </header>
+        <div class="px-40 flex flex-1 justify-center py-5">
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+            <div class="@container">
+              <div class="@[480px]:px-4 @[480px]:py-3">
+                <div
+                  class="bg-cover bg-center flex flex-col justify-end overflow-hidden bg-[#fcf8f8] @[480px]:rounded-xl min-h-[218px]"
+                  style='background-image: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 25%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuBwacCBncYj8AokWK969EAjzFmNVUIDhnErMJAKPuZu3XQ6xYLsK6Kg9S9Gk2BLmxrnJFkRis1JXql1pJJwXGhJxEl6Q5BaDiRJ54LnlLEFiZFirrV3rR2aCH-XxA1yzfWrIcHUIHHtxD4qRGTrOxgglpsMflglBODgoI3ukpJ2Mx9f2qLPEaPZeP0Bci5qa5fesTztpzT8vRfV2Kw8xJjXLMrNBB0vtSnKSYTXLICbDJwCpVSvFixF97crL2Q5FxxflGyXSK_ZPuM");'
+                >
+                  <div class="flex p-4"><p class="text-white tracking-light text-[28px] font-bold leading-tight">Deals</p></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-3 p-3 overflow-x-hidden">
+              <button class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-2">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">All</p>
+                <div class="text-[#1b0e0f]" data-icon="CaretDown" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
+                  </svg>
+                </div>
+              </button>
+              <button class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-2">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">Produce</p>
+                <div class="text-[#1b0e0f]" data-icon="CaretDown" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
+                  </svg>
+                </div>
+              </button>
+              <button class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-2">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">Dairy &amp; Eggs</p>
+                <div class="text-[#1b0e0f]" data-icon="CaretDown" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
+                  </svg>
+                </div>
+              </button>
+              <button class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-2">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">Meat &amp; Seafood</p>
+                <div class="text-[#1b0e0f]" data-icon="CaretDown" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M213.66,101.66l-80,80a8,8,0,0,1-11.32,0l-80-80A8,8,0,0,1,53.66,90.34L128,164.69l74.34-74.35a8,8,0,0,1,11.32,11.32Z"></path>
+                  </svg>
+                </div>
+              </button>
+            </div>
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-3 p-4">
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDIXumU2PlDnY2f_enAo2VsZrS328tOeSNAvcBACSOhsqTwZfyhKzVAQtpyOKSZEHEynLxKjK3LqfmVqNgIfM-MnT5btc9XywaiyQJlVrhk3YCOv48ABSgnJRNtmusNSgW609pk8yd90PJK4rNK8n_YEGO6XMyc98FT6P0j_cPxgtpr34R_V8I4OZt-nlhsiinmrBHMK2pyx-_RV3IS14M8Oaoz9Aekoqob5qfA62tuHntny7A4mBpJofMH8rbFqMEAFbycXEPav28");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Organic Strawberries</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$3.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuChAx8PYsTTIWlCK_m0ib3FJalvUM0HHchgG_VizhN-PyjbkbLwZma8-Bc_Qv9LJTR4i1OkTEfjgBP0sTAtPbIGYcnw4rNaLMxbexihMA7Wslc8S6FIEHGv_a1O-NY63vT6wc6lkjGLQm3G0XHlKYDPJ19Yhs8ieCdvjth3d9ifjbhOcF7VrYUQT3gTrE3W-kKiMPVbwLe-w-VUi-8AfoODgnwTIGb5XfVM9FqB9_J2GhEQSXK9y6N067utSlJFLcXe9My8EmwweAc");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Free-Range Eggs</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$2.49</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBrewupZhcqjlzAXn0dAfk3SPizGWmySp-dNxiXDdkKpncBjsKi-A6KSkJvVl_hwlwDGPrrckLjkL4B4j1DX0ufEhTWfXxePpxuX7qhHXzKxDBWvV_UPLVMJ3lCSN_UoLprD-L3rRmn_6C86xucHqSqJm3afTlQDYzY4F6sAfJNPr6OfWrj-d2f_58qgPXQGUWdWrdkcUKPp1oUj9C1JHjbHozkzIIgc4ycVT4jv02_Xh4ekBh4yXfPBHmmRDi11gL2nhuXYtnwdmQ");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Wild Alaskan Salmon</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$12.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCfnVOIKSRf0fDJkDziKEyeKewEzDcU428F_cTg59050wXPGY5aXJ4IFpeyjhTIHpYas2kO8ZOk-3humocRXFCSSY4TE9gc2Y1jV9VVt49rR3D5kkmgch7WxESt7Tk9R5XA8BtgjnGf2JfM2_E5CfWmUrSrF76tOwlZkYUCd4HhIGT551JIkHdgfPdxLIPTOg1QcFOagSzpDKztJyKtSHEg_G7n5iw2hkrrCoy0cmFJKzqfeBFMB5Lxj4kPIVYXHYmDu2dEVRcUM38");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Grass-Fed Ground Beef</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$7.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCcrt_hbF7f6ChQJXvTImHqJnnesiijeq8rKAA4NxisdMh_3ObfWo1rwWWd2bQHsXaZPhTqd7Cs9oZK97iIj-thX51EQVJaHTtyP8or9NnPZCTIG1_Zrh1V9fJdDhtvWoa1nhQWmTURZPexo6ERwLmUT1VrXW4SI2RBwJmvKYoPhpIZe6zf0BQoiY0Fai4ACoHNYennxLyxrRJ7ywDH4wBzhplWQQPCXcI40Unu3AInQBDrgVUBevC0p3vuc5mxSTLoy0I5XWhr7Gc");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Artisan Cheese Selection</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$8.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBygn9w_VdZ6Pf4oR2pp9-hzRZEqwMdspp74_HPS3NWMVDwoGiQRV-gC3e0BL6kD4SNFF9MyOZlUtkOPJNAfyqy8PC-G2PNL8LtWTXRlNFmDxP877l4xnTh8TxJd9UhocqL3fmAzbkFCoXAGy1o1upPW2Pf1A0JW_09eB9SbzhwQhDqZv_Y2V1NnkBYW_uS2_-MJZlilOIHoTmLYVVFkMYijoZYnJYnqy6g7yuwEaj-PiuRQ4h1V81eWkv7ZQC0_sW6GRremf2nf6k");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Fresh Baguette</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$1.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBDgZ9jgTa6QPwj3H4YoY0waGgKgD228Vn_Fe9S5aTqpxXOVWegyNhRbTW59kUwQAL7gSKZVAKRiH8X5G9nKdZpSvZ3IBoTJSsiAyUTsq1AcIAHMPfDsnTcpdSuBtQ5_hWpWR700wxob4-PbEebQaRrwlemCP22jxBBV56gtkBjPr7WulGOeorvz5G2_F24uLZND3u7J3oqZdz5A3HFkQ8axUnA7agFY8pzphwh1ShwSVHtU5N5GxJcrvt93YejY0seKcamiCsUCvo");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Avocado</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$0.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAkiQk9Ae_EvFNAZSdQZQXSqwBKY5csW9qWrpA07JY95UN6MrDYMIwus2BpU_8ARifBl29QNG_P5yWpITBxtExI_v9bMrCU0OlAxwWIUakRiY4I9DaA4cKP9W9zaiom5oGoBjSlUyGfOaOKGBSlrZabiTXQmHO0du0M6w4WroIIhA6cQndbi7bm5qkimmGStZ3O49JgXudagngQ9vUuEs3SgHQlrJ6PQgKBgY5TN8GZL57MAX4-Ca6SgbCAFbYd4AjSRWJpU6SAWPM");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Organic Spinach</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$2.49</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

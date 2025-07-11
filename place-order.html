@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Place Order</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+    .container { max-width: 400px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; }
+    h2 { color: #2563eb; }
+    label { display: block; margin-bottom: 8px; }
+    input[type="text"], input[type="number"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #2563eb; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+    .result { margin-top: 16px; color: #16a34a; font-weight: bold; }
+    .error { color: #dc2626; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Place Order</h2>
+    <form id="orderForm">
+      <label for="address">Address:</label>
+      <input type="text" id="address" required />
+      <label for="lat">Latitude:</label>
+      <input type="number" id="lat" step="any" required />
+      <label for="lng">Longitude:</label>
+      <input type="number" id="lng" step="any" required />
+      <button type="submit">Place Order</button>
+    </form>
+    <div class="result" id="result"></div>
+  </div>
+  <script>
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const address = document.getElementById('address').value.trim();
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lng = parseFloat(document.getElementById('lng').value);
+      const resultDiv = document.getElementById('result');
+      resultDiv.textContent = 'Placing order...';
+      fetch('http://localhost:4000/order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address, lat, lng })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.orderId) {
+          resultDiv.innerHTML = `Order placed!<br>Order ID: <b>${data.orderId}</b><br>Address: ${data.address}<br>Lat: ${data.lat}<br>Lng: ${data.lng}`;
+        } else {
+          resultDiv.innerHTML = '<span class="error">Error placing order.</span>';
+        }
+      })
+      .catch(() => {
+        resultDiv.innerHTML = '<span class="error">Network error. Please try again.</span>';
+      });
+    });
+  </script>
+</body>
+</html> 

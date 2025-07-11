@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order Tracking</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; }
+    h2 { color: #2563eb; }
+    label { display: block; margin-bottom: 8px; }
+    input[type="text"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #2563eb; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+    #map { height: 400px; width: 100%; border-radius: 8px; margin-bottom: 16px; }
+    .status { margin-top: 16px; color: #555; }
+    .eta { font-weight: bold; color: #16a34a; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Track Your Order</h2>
+    <form id="orderForm">
+      <label for="orderId">Order ID:</label>
+      <input type="text" id="orderId" required />
+      <button type="submit">Track Order</button>
+    </form>
+    <div id="map" style="display:none;"></div>
+    <div class="status" id="status"></div>
+    <div class="eta" id="eta"></div>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    let map, userMarker, deliveryMarker, routeLine;
+    let orderId = null;
+    let userLatLng = null;
+    let intervalId = null;
+
+    const statusDiv = document.getElementById('status');
+    const etaDiv = document.getElementById('eta');
+    const mapDiv = document.getElementById('map');
+
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      orderId = document.getElementById('orderId').value.trim();
+      if (!orderId) {
+        statusDiv.textContent = 'Please enter a valid Order ID.';
+        return;
+      }
+      statusDiv.textContent = 'Fetching order details...';
+      fetchOrderDetails();
+    });
+
+    function fetchOrderDetails() {
+      fetch(`http://localhost:4000/order/${orderId}`)
+        .then(res => res.json())
+        .then(order => {
+          if (!order.lat || !order.lng) {
+            statusDiv.textContent = 'Order does not have a valid delivery address.';
+            return;
+          }
+          userLatLng = [order.lat, order.lng];
+          statusDiv.textContent = 'Order found. Waiting for delivery person location...';
+          showMap();
+          if (intervalId) clearInterval(intervalId);
+          intervalId = setInterval(updateDeliveryLocation, 5000);
+          updateDeliveryLocation();
+        })
+        .catch(() => {
+          statusDiv.textContent = 'Order not found.';
+        });
+    }
+
+    function showMap() {
+      mapDiv.style.display = '';
+      if (!map) {
+        map = L.map('map').setView(userLatLng, 13);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+        userMarker = L.marker(userLatLng, {icon: L.icon({iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png', iconSize: [32, 32], iconAnchor: [16, 32]})}).addTo(map).bindPopup('Your Delivery Address').openPopup();
+        deliveryMarker = L.marker(userLatLng, {icon: L.icon({iconUrl: 'https://cdn-icons-png.flaticon.com/512/1946/1946429.png', iconSize: [32, 32], iconAnchor: [16, 32]})}).addTo(map).bindPopup('Delivery Person');
+      } else {
+        map.setView(userLatLng, 13);
+        userMarker.setLatLng(userLatLng);
+      }
+    }
+
+    function updateDeliveryLocation() {
+      fetch(`http://localhost:4000/location/${orderId}`)
+        .then(res => res.json())
+        .then(loc => {
+          if (!loc.lat || !loc.lng) {
+            statusDiv.textContent = 'Waiting for delivery person to start moving...';
+            return;
+          }
+          deliveryMarker.setLatLng([loc.lat, loc.lng]);
+          deliveryMarker.openPopup();
+          drawRouteAndETA([loc.lat, loc.lng]);
+        })
+        .catch(() => {
+          statusDiv.textContent = 'Waiting for delivery person to start moving...';
+        });
+    }
+
+    function drawRouteAndETA(deliveryLatLng) {
+      // Remove previous route
+      if (routeLine) {
+        map.removeLayer(routeLine);
+      }
+      // OSRM API for route
+      var url = `https://router.project-osrm.org/route/v1/driving/${deliveryLatLng[1]},${deliveryLatLng[0]};${userLatLng[1]},${userLatLng[0]}?overview=full&geometries=geojson`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.routes && data.routes.length > 0) {
+            var coords = data.routes[0].geometry.coordinates.map(function(coord) {
+              return [coord[1], coord[0]];
+            });
+            routeLine = L.polyline(coords, {color: 'green', weight: 4}).addTo(map);
+            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
+            var eta = Math.round(data.routes[0].duration / 60); // in minutes
+            etaDiv.textContent = 'Estimated arrival: ' + eta + ' min';
+          } else {
+            etaDiv.textContent = '';
+          }
+        })
+        .catch(() => {
+          etaDiv.textContent = '';
+        });
+    }
+  </script>
+</body>
+</html> 

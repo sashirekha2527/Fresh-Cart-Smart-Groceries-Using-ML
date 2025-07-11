@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FreshCart - New Customer Offer</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Plus+Jakarta+Sans%3Awght%40400%3B500%3B700%3B800"
+    />
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      let reviews = {};
+      
+      // Initialize reviews data
+      function initializeReviews() {
+        const savedReviews = localStorage.getItem('productReviews');
+        if (savedReviews) {
+          reviews = JSON.parse(savedReviews);
+        }
+      }
+      
+      // Get average rating for a product
+      function getAverageRating(productName) {
+        if (!reviews[productName] || reviews[productName].length === 0) {
+          return 0;
+        }
+        const total = reviews[productName].reduce((sum, review) => sum + review.rating, 0);
+        return (total / reviews[productName].length).toFixed(1);
+      }
+      
+      // Get review count for a product
+      function getReviewCount(productName) {
+        return reviews[productName] ? reviews[productName].length : 0;
+      }
+      
+      // Function to show reviews modal
+      function showReviewsModal(productName) {
+        const productReviews = reviews[productName] || [];
+        const averageRating = getAverageRating(productName);
+        const reviewCount = getReviewCount(productName);
+        
+        let reviewsHTML = '';
+        if (productReviews.length > 0) {
+          reviewsHTML = productReviews.map(review => `
+            <div class="border-b border-gray-200 pb-3 mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex text-yellow-500">
+                    ${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}
+                  </div>
+                  <span class="font-medium text-sm">${review.user}</span>
+                </div>
+                <span class="text-xs text-gray-500">${review.date}</span>
+              </div>
+              <p class="text-sm text-gray-600">${review.comment}</p>
+            </div>
+          `).join('');
+        } else {
+          reviewsHTML = '<p class="text-gray-500 text-center py-4">No reviews yet. Be the first to review this product!</p>';
+        }
+        
+        const modalHTML = `
+          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-[#1b0e0e]">Reviews for ${productName}</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="mb-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="flex text-yellow-500 text-2xl">
+                    ${'★'.repeat(Math.floor(averageRating))}${averageRating % 1 >= 0.5 ? '☆' : ''}${'☆'.repeat(5-Math.floor(averageRating)-(averageRating % 1 >= 0.5 ? 1 : 0))}
+                  </div>
+                  <div>
+                    <div class="font-semibold">${averageRating} out of 5</div>
+                    <div class="text-sm text-gray-600">${reviewCount} review${reviewCount !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                ${reviewsHTML}
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+      }
+      
+      // Function to close modal
+      function closeModal() {
+        const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+        if (modal) {
+          modal.remove();
+        }
+      }
+      
+      // Function to make product cards clickable
+      function makeProductCardsClickable() {
+        console.log('Making product cards clickable...');
+        
+        // Find ALL product cards using multiple selectors to catch all sections
+        let productCards = [];
+        
+        // Selector 1: Main product cards
+        const mainCards = document.querySelectorAll('.flex.h-full.flex-1.flex-col.gap-4.rounded-lg.min-w-40');
+        productCards = [...mainCards];
+        console.log('Found main product cards:', mainCards.length);
+        
+        // Selector 2: Cards in section containers (Dairy, Snacks, Flowers, etc.)
+        const sectionCards = document.querySelectorAll('.flex.items-stretch.p-4.gap-3 .flex.h-full.flex-1.flex-col.gap-4.rounded-lg.min-w-40');
+        sectionCards.forEach(card => {
+          if (!productCards.includes(card)) {
+            productCards.push(card);
+          }
+        });
+        console.log('Found section product cards:', sectionCards.length);
+        
+        // Selector 3: Any flex container with product-like structure
+        const flexCards = document.querySelectorAll('[class*="flex"][class*="h-full"][class*="flex-col"][class*="gap-4"][class*="rounded-lg"]');
+        flexCards.forEach(card => {
+          if (!productCards.includes(card)) {
+            productCards.push(card);
+          }
+        });
+        console.log('Found flex product cards:', flexCards.length);
+        
+        // Selector 4: Cards with product name elements
+        const allCards = document.querySelectorAll('div');
+        allCards.forEach(card => {
+          const hasProductName = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium') ||
+                                card.querySelector('p[class*="text-base"][class*="font-medium"]');
+          const hasImage = card.querySelector('div[style*="background-image"]');
+          const hasPrice = card.querySelector('p.text-\\[\\#994d51\\].text-sm.font-normal') ||
+                          card.querySelector('p[class*="text-sm"][class*="font-normal"]');
+          
+          if (hasProductName && hasImage && hasPrice && !productCards.includes(card)) {
+            productCards.push(card);
+          }
+        });
+        
+        console.log('Total product cards found:', productCards.length);
+        
+        productCards.forEach((card, index) => {
+          // Skip if already has onclick handler
+          if (card.hasAttribute('onclick') || card.onclick) {
+            console.log(`Card ${index + 1} already has click handler`);
+            return;
+          }
+          
+          // Find product information
+          const productNameElement = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium') || 
+                                   card.querySelector('p[class*="text-base"][class*="font-medium"]') ||
+                                   card.querySelector('p');
+          
+          if (!productNameElement) {
+            console.log(`No product name found in card ${index + 1}`);
+            return;
+          }
+          
+          const productName = productNameElement.textContent.trim();
+          
+          // Find price
+          const priceElement = card.querySelector('p.text-\\[\\#994d51\\].text-sm.font-normal') ||
+                              card.querySelector('p[class*="text-sm"][class*="font-normal"]');
+          const price = priceElement ? priceElement.textContent.trim() : '$0.00';
+          
+          // Find image
+          const imageElement = card.querySelector('div[style*="background-image"]');
+          const image = imageElement ? 
+            imageElement.style.backgroundImage.replace(/url\(['"]?(.*?)['"]?\)/g, '$1') : '';
+          
+          // Find description
+          const descriptionElement = card.querySelector('p.text-\\[\\#666\\].text-xs.leading-normal.mb-2') ||
+                                   card.querySelector('p[class*="text-xs"][class*="leading-normal"]');
+          const description = descriptionElement ? descriptionElement.textContent.trim() : `${productName} - Fresh and high quality`;
+          
+          console.log(`Making card ${index + 1} clickable for: ${productName}`);
+          
+          // Make card clickable
+          card.style.cursor = 'pointer';
+          card.classList.add('hover:shadow-lg', 'transition-shadow');
+          
+          card.onclick = function(e) {
+            // Don't trigger if clicking on buttons or review elements
+            if (e.target.tagName === 'BUTTON' || 
+                e.target.closest('button') || 
+                e.target.closest('.reviews-section')) {
+              return;
+            }
+            
+            console.log(`Clicked on product: ${productName}`);
+            
+            // Create URL parameters
+            const params = new URLSearchParams({
+              name: productName,
+              price: price,
+              image: image,
+              description: description,
+              category: 'General'
+            });
+            window.location.href = `product-detail.html?${params.toString()}`;
+          };
+          
+          // Add hover effect
+          card.style.transition = 'transform 0.2s ease-in-out';
+          card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+          });
+          
+          card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+          });
+        });
+        
+        console.log('Finished making product cards clickable');
+      }
+      
+      // Function to automatically add review sections to all product cards
+      function addReviewSectionsToAllProducts() {
+        // Find all product cards
+        const productCards = document.querySelectorAll('.flex.h-full.flex-1.flex-col.gap-4.rounded-lg.min-w-40');
+        
+        productCards.forEach(card => {
+          // Find the product name
+          const productNameElement = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium');
+          if (!productNameElement) return;
+          
+          const productName = productNameElement.textContent;
+          
+          // Check if review section already exists
+          const existingReviewSection = card.querySelector('.reviews-section');
+          if (existingReviewSection) return;
+          
+          // Find the description paragraph
+          const descriptionElement = card.querySelector('p.text-\\[\\#666\\].text-xs.leading-normal.mb-2');
+          if (!descriptionElement) return;
+          
+          // Create review section
+          const reviewSection = document.createElement('div');
+          reviewSection.className = 'reviews-section flex items-center gap-2 mb-2';
+          
+          const avgRating = getAverageRating(productName);
+          const reviewCount = getReviewCount(productName);
+          
+          reviewSection.innerHTML = `
+            <div class="flex items-center gap-1">
+              <span class="text-yellow-500 text-xs">★</span>
+              <span class="text-xs text-gray-600" id="${productName.toLowerCase().replace(/\s+/g, '-')}-rating">${avgRating}</span>
+              <span class="text-xs text-gray-500">(${reviewCount})</span>
+            </div>
+            <button onclick="event.stopPropagation(); showReviewsModal('${productName}')" class="text-xs text-[#994d51] hover:underline">View Reviews</button>
+          `;
+          
+          // Insert after description
+          descriptionElement.parentNode.insertBefore(reviewSection, descriptionElement.nextSibling);
+        });
+      }
+      
+      // Initialize on page load
+      window.onload = function() {
+        initializeReviews();
+        setTimeout(() => {
+          addReviewSectionsToAllProducts();
+          makeProductCardsClickable(); // Make all product cards clickable
+        }, 500);
+      };
+    </script>
+</head>
+<body class="bg-[#fcf8f8] font-['Plus_Jakarta_Sans']">
+    <!-- Header -->
+    <header class="bg-white shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center">
+                    <button onclick="window.location.href='Home.html'" class="text-[#994d51] hover:text-[#7a3d41] transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </button>
+                    <h1 class="ml-4 text-2xl font-bold text-[#1b0e0e]">New Customer Offer</h1>
+                </div>
+                <div class="flex items-center gap-9">
+                    <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Deals.html'">Deals</a>
+                    <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='WhatsNewSection.html'">What's New</a>
+                    <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Notifications.html'">Reminders</a>
+                    <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Coupons.html'">Coupons</a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Offer Banner -->
+        <div class="bg-gradient-to-r from-[#994d51] to-[#7a3d41] rounded-2xl p-8 text-white mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-3xl font-bold mb-2">🎉 Welcome to FreshCart!</h2>
+                    <p class="text-xl">Get 20% off your first order</p>
+                </div>
+                <div class="text-right">
+                    <div class="text-4xl font-bold">20% OFF</div>
+                    <div class="text-sm opacity-90">First Order</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="bg-white rounded-2xl p-8 mb-8 shadow-sm">
+            <h3 class="text-2xl font-bold text-[#1b0e0e] mb-6">How to Get Your Discount</h3>
+            <div class="grid md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-[#f3e7e8] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl">👤</span>
+                    </div>
+                    <h4 class="font-semibold text-[#1b0e0e] mb-2">1. Create Account</h4>
+                    <p class="text-gray-600 text-sm">Sign up for a new FreshCart account</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-[#f3e7e8] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl">🛒</span>
+                    </div>
+                    <h4 class="font-semibold text-[#1b0e0e] mb-2">2. Add Items</h4>
+                    <p class="text-gray-600 text-sm">Browse and add groceries to your cart</p>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 bg-[#f3e7e8] rounded-full flex items-center justify-center mx-auto mb-4">
+                        <span class="text-2xl">💳</span>
+                    </div>
+                    <h4 class="font-semibold text-[#1b0e0e] mb-2">3. Apply Code</h4>
+                    <p class="text-gray-600 text-sm">Use code WELCOME20 at checkout</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Benefits -->
+        <div class="bg-white rounded-2xl p-8 mb-8 shadow-sm">
+            <h3 class="text-2xl font-bold text-[#1b0e0e] mb-6">What You'll Get</h3>
+            <div class="space-y-4">
+                <div class="flex items-start">
+                    <div class="w-6 h-6 bg-[#994d51] rounded-full flex items-center justify-center mr-3 mt-1">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-[#1b0e0e]">20% Off Your First Order</h4>
+                        <p class="text-gray-600 text-sm">Save big on your first grocery order with us</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="w-6 h-6 bg-[#994d51] rounded-full flex items-center justify-center mr-3 mt-1">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-[#1b0e0e]">No Minimum Order</h4>
+                        <p class="text-gray-600 text-sm">Use the discount on any order amount</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="w-6 h-6 bg-[#994d51] rounded-full flex items-center justify-center mr-3 mt-1">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-[#1b0e0e]">Fresh Quality Products</h4>
+                        <p class="text-gray-600 text-sm">Same high-quality groceries at a discounted price</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <div class="w-6 h-6 bg-[#994d51] rounded-full flex items-center justify-center mr-3 mt-1">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-[#1b0e0e]">Fast Delivery</h4>
+                        <p class="text-gray-600 text-sm">Quick delivery to your doorstep</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Promo Code Section -->
+        <div class="bg-gradient-to-r from-yellow-400 to-yellow-500 rounded-2xl p-8 mb-8 text-center">
+            <h3 class="text-2xl font-bold text-gray-800 mb-4">Your Promo Code</h3>
+            <div class="bg-white rounded-lg p-4 inline-block">
+                <p class="text-3xl font-bold text-[#994d51] tracking-wider">WELCOME20</p>
+                <p class="text-sm text-gray-600 mt-2">Use this code at checkout</p>
+            </div>
+        </div>
+
+        <!-- Terms & Conditions -->
+        <div class="bg-white rounded-2xl p-8 mb-8 shadow-sm">
+            <h3 class="text-2xl font-bold text-[#1b0e0e] mb-6">Terms & Conditions</h3>
+            <div class="space-y-3 text-sm text-gray-600">
+                <p>• Offer valid for new customers only (first-time account creation)</p>
+                <p>• 20% discount applies to the entire order before taxes and delivery fees</p>
+                <p>• Promo code WELCOME20 must be applied at checkout</p>
+                <p>• Offer cannot be combined with other promotional codes</p>
+                <p>• Valid on all grocery items and household essentials</p>
+                <p>• Offer expires 30 days after account creation</p>
+                <p>• FreshCart reserves the right to modify or terminate this offer at any time</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex gap-4 justify-center">
+            <button onclick="window.location.href='Home5.html'" class="bg-[#994d51] text-white px-8 py-3 rounded-lg font-medium hover:bg-[#7a3d41] transition-colors">
+                Create Account
+            </button>
+            <button onclick="window.location.href='Home2.html'" class="bg-gray-200 text-gray-800 px-8 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                Browse Products
+            </button>
+            <button onclick="window.location.href='Home.html'" class="bg-gray-200 text-gray-800 px-8 py-3 rounded-lg font-medium hover:bg-gray-300 transition-colors">
+                Back to Home
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-t mt-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div class="text-center text-gray-600">
+                <p>&copy; 2024 FreshCart. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

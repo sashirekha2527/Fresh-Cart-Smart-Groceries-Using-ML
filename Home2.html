@@ -1,0 +1,541 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Plus+Jakarta+Sans%3Awght%40400%3B500%3B700%3B800"
+    />
+
+    <title>Stitch Design</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      let reviews = {};
+      
+      // Initialize reviews data
+      function initializeReviews() {
+        const savedReviews = localStorage.getItem('productReviews');
+        if (savedReviews) {
+          reviews = JSON.parse(savedReviews);
+        }
+      }
+      
+      // Get average rating for a product
+      function getAverageRating(productName) {
+        if (!reviews[productName] || reviews[productName].length === 0) {
+          return 0;
+        }
+        const total = reviews[productName].reduce((sum, review) => sum + review.rating, 0);
+        return (total / reviews[productName].length).toFixed(1);
+      }
+      
+      // Get review count for a product
+      function getReviewCount(productName) {
+        return reviews[productName] ? reviews[productName].length : 0;
+      }
+      
+      // Function to show reviews modal
+      function showReviewsModal(productName) {
+        const productReviews = reviews[productName] || [];
+        const averageRating = getAverageRating(productName);
+        const reviewCount = getReviewCount(productName);
+        
+        let reviewsHTML = '';
+        if (productReviews.length > 0) {
+          reviewsHTML = productReviews.map(review => `
+            <div class="border-b border-gray-200 pb-3 mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex text-yellow-500">
+                    ${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}
+                  </div>
+                  <span class="font-medium text-sm">${review.user}</span>
+                </div>
+                <span class="text-xs text-gray-500">${review.date}</span>
+              </div>
+              <p class="text-sm text-gray-600">${review.comment}</p>
+            </div>
+          `).join('');
+        } else {
+          reviewsHTML = '<p class="text-gray-500 text-center py-4">No reviews yet. Be the first to review this product!</p>';
+        }
+        
+        const modalHTML = `
+          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-[#1b0e0e]">Reviews for ${productName}</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="mb-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="flex text-yellow-500 text-2xl">
+                    ${'★'.repeat(Math.floor(averageRating))}${averageRating % 1 >= 0.5 ? '☆' : ''}${'☆'.repeat(5-Math.floor(averageRating)-(averageRating % 1 >= 0.5 ? 1 : 0))}
+                  </div>
+                  <div>
+                    <div class="font-semibold">${averageRating} out of 5</div>
+                    <div class="text-sm text-gray-600">${reviewCount} review${reviewCount !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                ${reviewsHTML}
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+      }
+      
+      // Function to close modal
+      function closeModal() {
+        const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+        if (modal) {
+          modal.remove();
+        }
+      }
+      
+      // Function to make product cards clickable
+      function makeProductCardsClickable() {
+        console.log('Making product cards clickable...');
+        
+        // Find all product cards in Home2.html structure
+        const productCards = document.querySelectorAll('.flex.flex-col.gap-3.pb-3');
+        console.log('Found product cards:', productCards.length);
+        
+        productCards.forEach((card, index) => {
+          // Skip if already clickable
+          if (card.onclick) {
+            console.log(`Card ${index + 1} already clickable`);
+            return;
+          }
+          
+          // Find product information
+          const productNameElement = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium');
+          if (!productNameElement) {
+            console.log(`No product name found in card ${index + 1}`);
+            return;
+          }
+          
+          const productName = productNameElement.textContent.trim();
+          
+          // Find price
+          const priceElement = card.querySelector('p.text-\\[\\#994d51\\].text-sm.font-normal');
+          const price = priceElement ? priceElement.textContent.trim() : '$0.00';
+          
+          // Find image
+          const imageElement = card.querySelector('div[style*="background-image"]');
+          const image = imageElement ? 
+            imageElement.style.backgroundImage.replace(/url\(['"]?(.*?)['"]?\)/g, '$1') : '';
+          
+          console.log(`Making card ${index + 1} clickable for: ${productName}`);
+          
+          // Make card clickable
+          card.style.cursor = 'pointer';
+          card.onclick = function(e) {
+            // Don't trigger if clicking on buttons or review elements
+            if (e.target.tagName === 'BUTTON' || 
+                e.target.closest('button') || 
+                e.target.closest('.rating-display')) {
+              return;
+            }
+            
+            console.log(`Clicked on product: ${productName}`);
+            
+            // Create URL parameters
+            const params = new URLSearchParams({
+              name: productName,
+              price: price,
+              image: image,
+              description: `${productName} - Fresh and high quality`,
+              category: 'Dairy & Eggs'
+            });
+            window.location.href = `product-detail.html?${params.toString()}`;
+          };
+          
+          // Add hover effect
+          card.style.transition = 'transform 0.2s ease-in-out';
+          card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+          });
+          
+          card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+          });
+        });
+        
+        console.log('Finished making product cards clickable');
+      }
+      
+      // Initialize on page load
+      window.onload = function() {
+        initializeReviews();
+        updateAllProductRatings();
+        setTimeout(() => {
+          makeProductCardsClickable(); // Make all product cards clickable
+        }, 500);
+      };
+      
+      // Function to update all product ratings
+      function updateAllProductRatings() {
+        const products = ['Milk', 'Eggs', 'Yogurt', 'Cheese', 'Butter', 'Cream'];
+        products.forEach(product => {
+          updateProductRatingDisplay(product);
+        });
+      }
+      
+      // Function to update product rating display
+      function updateProductRatingDisplay(productName) {
+        const avgRating = getAverageRating(productName);
+        const reviewCount = getReviewCount(productName);
+        
+        // Find the product card and add rating display
+        const productCards = document.querySelectorAll('.flex.flex-col.gap-3.pb-3');
+        productCards.forEach(card => {
+          const productTitle = card.querySelector('p.text-\\[\\#1b0e0e\\]');
+          if (productTitle && productTitle.textContent === productName) {
+            // Check if rating already exists
+            let ratingDiv = card.querySelector('.rating-display');
+            if (!ratingDiv) {
+              ratingDiv = document.createElement('div');
+              ratingDiv.className = 'rating-display flex items-center gap-2 mt-2';
+              card.appendChild(ratingDiv);
+            }
+            
+            ratingDiv.innerHTML = `
+              <div class="flex items-center gap-1">
+                <span class="text-yellow-500 text-xs">★</span>
+                <span class="text-xs text-gray-600">${avgRating}</span>
+                <span class="text-xs text-gray-500">(${reviewCount})</span>
+              </div>
+              <button onclick="showReviewsModal('${productName}')" class="text-xs text-[#994d51] hover:underline">View Reviews</button>
+            `;
+          }
+        });
+      }
+    </script>
+  </head>
+  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-[#fcf8f8] group/design-root overflow-x-hidden" style='font-family: "Plus Jakarta Sans", "Noto Sans", sans-serif;'>
+      <div class="layout-container flex h-full grow flex-col">
+        <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f3e7e8] px-10 py-3">
+          <div class="flex items-center gap-8">
+            <div class="flex items-center gap-4 text-[#1b0e0e]">
+              <div class="size-4">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <g clip-path="url(#clip0_6_535)">
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z"
+                      fill="currentColor"
+                    ></path>
+                  </g>
+                  <defs>
+                    <clipPath id="clip0_6_535"><rect width="48" height="48" fill="white"></rect></clipPath>
+                  </defs>
+                </svg>
+              </div>
+              <h2 class="text-[#1b0e0e] text-lg font-bold leading-tight tracking-[-0.015em]">FreshFoods</h2>
+            </div>
+            <div class="flex items-center gap-9">
+              <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Deals.html'">Deals</a>
+              <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='WhatsNewSection.html'">What's New</a>
+              <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Notifications.html'">Reminders</a>
+              <a class="text-[#1b0e0e] text-sm font-medium leading-normal hover:text-[#994d51] transition-colors cursor-pointer" onclick="window.location.href='Coupons.html'">Coupons</a>
+            </div>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
+            <label class="flex flex-col min-w-40 !h-10 max-w-64">
+              <div class="flex w-full flex-1 items-stretch rounded-xl h-full">
+                <div
+                  class="text-[#994d51] flex border-none bg-[#f3e7e8] items-center justify-center pl-4 rounded-l-xl border-r-0"
+                  data-icon="MagnifyingGlass"
+                  data-size="24px"
+                  data-weight="regular"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+                    ></path>
+                  </svg>
+                </div>
+                <input
+                  placeholder="Search"
+                  class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#1b0e0e] focus:outline-0 focus:ring-0 border-none bg-[#f3e7e8] focus:border-none h-full placeholder:text-[#994d51] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
+                  value=""
+                />
+              </div>
+            </label>
+            <div class="flex gap-2">
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 bg-[#f3e7e8] text-[#1b0e0e] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
+              >
+                <div class="text-[#1b0e0e]" data-icon="Heart" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M178,32c-20.65,0-38.73,8.88-50,23.89C116.73,40.88,98.65,32,78,32A62.07,62.07,0,0,0,16,94c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,220.66,240,164,240,94A62.07,62.07,0,0,0,178,32ZM128,206.8C109.74,196.16,32,147.69,32,94A46.06,46.06,0,0,1,78,48c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,147.61,146.24,196.15,128,206.8Z"
+                    ></path>
+                  </svg>
+                </div>
+              </button>
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 bg-[#f3e7e8] text-[#1b0e0e] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
+              >
+                <div class="text-[#1b0e0e]" data-icon="User" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M230.92,212c-15.23-26.33-38.7-45.21-66.09-54.16a72,72,0,1,0-73.66,0C63.78,166.78,40.31,185.66,25.08,212a8,8,0,1,0,13.85,8c18.84-32.56,52.14-52,89.07-52s70.23,19.44,89.07,52a8,8,0,1,0,13.85-8ZM72,96a56,56,0,1,1,56,56A56.06,56.06,0,0,1,72,96Z"
+                    ></path>
+                  </svg>
+                </div>
+              </button>
+            </div>
+            <div
+              class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCIdNKH1hybONBBHsfHSR5kOG7lLNOvDhN7hb5ZY5LgyYubcKLT21Ui1uw1_ePu-J_JYQcT9Go86U-OuCf1AvVrQvIzaf8e6FMx0LkZRiKlcL-GqGEiQndHMYc_9Eo1DwbboJ_D8PD6LBjbOdl35HWX-4dvui0_naYN94_ulVwvDhCrKRrLXBKkJksdJ30hz3Ft3YyLnwcFNN_8JYLHvSxI1QjOEXPoJUS3oiuBsgV6saGUWhF4nLpITTI1xjI0FLevg0usAAtbYd4");'
+            ></div>
+          </div>
+        </header>
+        <div class="px-40 flex flex-1 justify-center py-5">
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+            <div class="flex flex-wrap gap-2 p-4">
+              <a class="text-[#994d51] text-base font-medium leading-normal" href="#">Grocery</a>
+              <span class="text-[#994d51] text-base font-medium leading-normal">/</span>
+              <span class="text-[#1b0e0e] text-base font-medium leading-normal">Dairy &amp; Eggs</span>
+            </div>
+            <div class="flex flex-wrap justify-between gap-3 p-4"><p class="text-[#1b0e0e] tracking-light text-[32px] font-bold leading-tight min-w-72">Dairy &amp; Eggs</p></div>
+            <div class="px-4 py-3">
+              <label class="flex flex-col min-w-40 h-12 w-full">
+                <div class="flex w-full flex-1 items-stretch rounded-xl h-full">
+                  <div
+                    class="text-[#994d51] flex border-none bg-[#f3e7e8] items-center justify-center pl-4 rounded-l-xl border-r-0"
+                    data-icon="MagnifyingGlass"
+                    data-size="24px"
+                    data-weight="regular"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                      <path
+                        d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+                      ></path>
+                    </svg>
+                  </div>
+                  <input
+                    placeholder="Search Dairy &amp; Eggs"
+                    class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#1b0e0e] focus:outline-0 focus:ring-0 border-none bg-[#f3e7e8] focus:border-none h-full placeholder:text-[#994d51] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
+                    value=""
+                  />
+                </div>
+              </label>
+            </div>
+            <div class="flex gap-3 p-3 flex-wrap pr-4">
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0e] text-sm font-medium leading-normal">Sort: Featured</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0e] text-sm font-medium leading-normal">Price</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0e] text-sm font-medium leading-normal">Brand</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0e] text-sm font-medium leading-normal">Dietary</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-3 p-4">
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCeZCcycZ28_venWaCuGeP6fxJqhnZ33GIFcDoPCvjzJ6f2bFuOEdTTyR0ui5o47Q2Eqo9BzK12DKoAnGXduiV4fwtDiKnpdo8ZRaB05QDREtIuBqzHcTMkV_gON-ua1OVFxH1AsQUf41bI7etOJkCYk89oF1sFwrd8l-7YwGFUkYeOnK73edKhnzGCbICltVKH5Gwupnpg_McBUFkuQ5I_rmGySzJrgtTa-wgBb7dZYKbXG6BsGNvtmiKj57D2pS71xMps_79eCOk");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Milk</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$3.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA9WqvzgrjII-hbUgeqLeuovQJ92riBmC0kPihecV61PUaPpBjPWGetCzgjKdL249BEAyw3ICuRyceo1_zGoYA3U_AI7dZ_lr7M8itxxDK7LVSw6z0QHGOsbknOlnmXi5y2g3IR9OcPmGQZDCj-CCdwta0M0q8-YY4dMYq_46jq7NmQGaENvu12KaZMCXFKJsijmajhEXyr5vyincWeafX3trQt8PZSwuYDbrKyMUoOLGzRaVasJuKAiYGsc9X4V2vMH0Yapg89u-o");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Eggs</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$2.49</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB_M-ZQalZ7oss4ehn_GZFQgIlcMbr3BROx81Kx8PHHON0XhKMrP7GBnYJ7WbKjZK9MiEjOlPJiR__vM_KO8clE2oqhikHj0VTDhFGl2qPG3_uC3ijIcdpd_C6j7yXnpvkdEebQ7ty1HUPcWGdIMdaEDkAdirmeV_oF2eph5Efn6Kkkms8GNFvITk0oDVj6JSYULJlG5-k0yVnNjr8XszVwEv2BIylwXgxZxqaZ9MzPyUolHp5iF8LBISxouGGowVMakXhK6WInuGU");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Yogurt</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$1.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBPFjAbXnsgFqdOFYxD7kzRG957zJM8qLYizXaY0A2tNERALgb8W2e87mVQoUzk3QYMhZDpgEfRkQkLchX_Jl0vVMPcLgxagAoVsMu74Tb4kk4pwVORnjQy6QUUuRQ2Z1Hl0WmiBuAWsn-iJnFpL_SZk5RjEqnBRUyVgANEUrKpdq0gEPYb2dVLg06nDjQ1NKKNuq_wUVVSLvfuqjd7NlWh06isvfIhsyt6kK5aKRnnXOz5zL6AYn2ufTFWdq8jWH4pUKMOLgAVM50");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Cheese</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$4.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDXfTYkVsD11apRR_lVAxXEt479R4mvCKpDovsLKnUAZtT7lBXZNu-rXvGwUkM-4lhD2L2romgzVIvgyduMyW0jm5q1SmH7uDwQyMrIXuyeVl_3r57LgCUSHU8Mhg7dY257IEyqrYq_1k7Wpc2xGP0WigPcTC7AmN0Wr-_BO17F8AZDraPCzZFuDg2FICBsf8o0mJ0DD059slB8G2gTG5qEdzboSK9KS_3zEv6_E4KT3gAgKllimATSG1ETTn8H-MF8kV3zePhqMBI");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Butter</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$3.49</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDRf1ECuZLoFdQa6N_k7OXdFSpIJ5SVLZOkrivL7pTG_Y_KNG-u_LafcBeILCPAPN_3QBoOZKFGXJYtDWPRl8EsK977Y4-MKDIF7Et69Qyn_eKKjKjlD4OsZaRzqwv-2ShqNCD42QmtXL9maXEQJY9F6yabJ2PcP47m3CXwQA7jhaogUnmxxWyAKrQkafNt-FB-NM0CXu2m-nFWJ--7azb8wF4QRAf8RJ5XKuLvsXSI8QzDD1zMrGIL6Tyav-r0hapqOZs2JXtanGE");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Cream</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$2.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAGpuxWLZUWOKJO6M52o2KdxzdFqhA6iirwIlLBUSmigKzwag_QTCSupi4zMd5LXlLn0Uw-Oh_Cf5_GYmVRFpVy3GoRrpnqESwrhl2kv2zV6p92ZJ93LzoRjUeGFB1q-ehE8tWlZJWzNfVmlVSSuZR4OBxBSbylS9kyW97looTjaIwnL6R-51uKhcFbb6DdIuiQ7ArVVsoO3wBjeZDSfADqeTk44wzRDH1wIkxcHDuR75DEq968IabXFFIFTHBpm7Fb3nTXnV-N4II");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Sour Cream</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$2.49</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBuzLviSSNLb3BfTPShHVSJI4g00sFHu7NZhb3JA8aq7ZqS2T65DTbXj5c-8QQnZ8AdS8r5eZun4p1lQCd3FKXpJ735kmlrNZVDlfUDj-Es4VUcfgqpZWej7EXLAN0koZ8gMLsjPggFubVtZwRl9rQuVjKhae449V4ictuMHoxHLNEkS7f-QOkUAqlCX1pzOixKakYXao8Ublb4eEQVb91hUgv6fV6inuncoOTQkxP6khqOQmXBoUazRrG1NYOt776IkUlWdgiIjAE");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Whipped Cream</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$2.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBP3uxW1UTYhd2EI-S_CTKM_XuilZgwhJPr8QOyC091r4giB_kfkYGax6bolNkY8pwFvIkrQpBmDOf4U_AsdwSbuza7oVVKdqgPi5Ztoe82IQUd7lXr8-FTl8KhNB99EsppgXFn6mvxYMTLowbhwPNJFdJLDEADuIIVzLHG8-DbVUQF6vapeLBdTA_pUhUIsc53n65uVmZAovMBbox3bjUowVApkn4qfUjDB_SHne9pmJLak8OLYpdTj4zs7q4uYI0DoCeCNBwGkE4");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Ice Cream</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$5.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBC-1TsSVh3m34DiPFcNULeYUFkT0CGKQTA_k95Ni9VA5oV8mvsiuv4tAhVBzzW_xWHezqWx4OsBtHYYQ0rm_1Iq6HiNUb-hjGL1cI-RdgTQl-iVEikUeV7C5HF60V2QauI70RKHR4q4CL0W3hweg6thIj65v4zNyig6AIItPomPeh46uMzV3BijVIGCkdgHmJscUDhLQblRwDqyczMvzSLBQn1xhh3MABS2e6uu0UiUxqEXrfoqDPZrjAi2UXir2is1FRsmMRVVf0");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Frozen Yogurt</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$4.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCq1Zs9dcLvwE4qXxs1ZUeiSNKsvkb3r1LNMUKcaxOg13yVm7i64a27Qk3AAiDzj--UfFJdbEfW0NGNz1ImpbmeNoVWKkszcCOVPUIiAyTnGS-TGSRWZ0uyTwRSE4h3OVhT1fMx6iXC2V1IsxA_mzVIANMTC_sxrg2uzcGo38JHfTMgDT3ZWwcx7YIauWWDlyKu-4cQ4kv3YgCeD079OJfz6aXuOcwnFjHl-0BfDfh4PYlqc1HxljZLMieRwu_7PmQv58YZSxQyMGc");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Sherbet</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$3.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuABefXOcz5lNiw7ykrNOK1q5_L5jGcwhWtq8_x31EiFBRm1dCQF0exKpvUpJHR-3V7uHYVVzEq-1-qS528B7Fbsl9c30xUwGYXIZ1WMmFA9c-jBDh1aYsElHmE9UCBOuX_1go_xmkU1HmMhlNhKsIpdl3D53HdTvn3quGd2pmkX9WrvchIKUa6B0Di5JV3_Vw9tw1w1ykImlppP2yADC6P6puk9nDdBhEbHwwQlMr8ECGAgQ2_IvrqMD7TMPBSLO0M31UDBK21K2cU");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Sorbet</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$3.49</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBoGAPWt0uNsUuRIg7X1V_8Q2ynNYMuG7f4WhjphNV3fczz-b9MIt-8YcDwGg6flvFPFsp9_QuN96fYt9OMJhm9iNFQ3qYqpEsArS6Sl1FY2gLxcn8kgNNHj-6uEPCSq9vnV9sYC8AGQ9rHfnQAmKit_yMiLJSLioE28SkPBSai-p9rGQjJod76JBJP0DJY0aJ4fxJ53Rjqcp_u0QTSaYGct0TqNtoz-XU_t72-fXq-3xectuRSGPWc84NWCype9iLIWsHZGeg5G9E");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Pudding</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$2.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAzs8O4tUp7v0zXynb2AoKCTt9zBzqS7TZyuwjti80q7uoJmoZKNX8erHGcYNQpXj2XWSJ0G_bO_e068YqTt9LbLivKGysrZ65cgojTiT-I8xe7-BbgGrJuEabjvySAi1SIfMDmViqYsxcb_tr1qOGYGHhVR33vv1B1HrE5Oy-dYubXPQOu5caj2nF8HJzvUfZaj8RST-upzcHNm5Qw0Y9PydxoB0RuoB_UfLwuwAjoOyE1StW2B3RmZC17VmHougzb_ZbPBRLlQDU");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Custard</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$2.49</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCdHPDh5b_fIA5DrZ1aBxx8a6seGj5NZep1wkrwl6SHA4stp6jKmHqmTWbKus_4lnGwzbceSvhYSjmH1cRvaoLJ3CT5sF18bog43ke4E4aq3V9_8K1F0KYrdROs65aE9uDiMn1nNHIBwC9RJuV5cPE1ihMXV9CQXenWylgvmTXPfWL05abkPibV_GYzKuF8tLIa02THUdIq-LrGmDNjcadZSxYwP6jh8l0T8C--yxsfv40bD3sUxDxL3ogwQ93OqlQI3G1qUh9ZwKM");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Flan</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$1.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBZorIEeaPVikCMBBQDWEN_CiIGKUxIPMarVNfuPmaJdEXH-Mf6ed1CS0TuVJt9zsJzkk8D_Ry_9EKBAQDPGbn4zjl0xDVkmhCX09FhoYTQAqmt48mUCFgeXB4_i2jFjMCJWEbw2ZGurDFsOgDN9E0YPNfGhmvhoYhJOUNptmu1O_s7p-FDQbJBvfYVmDIWNwTFh11MnyVNGAMaxfml-kmwXXueCOle9twHjWFX-fL-RkwEmq4zNcoJfUvJbxvs4FSZZ3wbKDgdIFU");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Mousse</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$3.49</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB56DNiPwsurI_QVnmlczDv0hIhFx7aChTFw6XH6y2ZYPlNsDTK9vgOMp1_JPrwB_w6YubuxI6mAZxFnDTs1_OkRoEBX-kR3Kg4RSrCoulMAaXk5MIfcv9jXeMkMsfuT7qyn3B8X3N6lebywbeYwqcpwuk6BYrgsrdJE2bQFfNl3_R6rNI05SyMzhsbO-9dhJudB52stZjDzDRr3retq_R8ptkeG-Te7s1ISBhfowuI-uQWth3OBWXnI7_5AX5yqAy4VCUfXd963cQ");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Parfait</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$2.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuBzgKEQCPDrREyybz8GP0c8oT2zSg7mwVorAJmll0vS51aPyTTKcgtbB39hXwUh3vrl3CUJd4ZlMhOALXNnH5Z0aYUDGjrEWiZSoHsxe_C3i7Fq_lITViWUI1VDutZ-fJakShalvyJfWQ4WaJ3cIXm4IWIViKqFF9DD_Cb41MHX4EGq_tGH_VyBvKv9KkJuOE-t55j7e8_sW6qEtfHBlYge0NLahOpfLoajiSptDwMJRkWK-7FK2vGh-NlLOTFxY53fSBHUIK6wxis");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0e] text-base font-medium leading-normal">Smoothie</p>
+                  <p class="text-[#994d51] text-sm font-normal leading-normal">$3.99</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

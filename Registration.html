@@ -1,0 +1,66 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Plus+Jakarta+Sans%3Awght%40400%3B500%3B700%3B800"
+    />
+
+    <title>Stitch Design</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  </head>
+  <body>
+    <div class="min-h-screen flex items-center justify-center bg-[#fbf9f9]">
+      <div class="w-full max-w-md">
+        <div class="layout-content-container flex flex-col w-full py-5">
+          <h2 class="text-[#191011] tracking-light text-[28px] font-bold leading-tight px-4 text-center pb-3 pt-5">Enter your phone number</h2>
+          <div class="flex max-w-[480px] flex-wrap items-end gap-4 px-4 py-3 mx-auto">
+            <label class="flex flex-col min-w-40 flex-1">
+              <p class="text-[#191011] text-base font-medium leading-normal pb-2">Phone number</p>
+              <input
+                id="phone-input"
+                type="tel"
+                maxlength="10"
+                pattern="[0-9]{10}"
+                oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 10);"
+                placeholder="Enter 10-digit phone number"
+                class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#191011] focus:outline-0 focus:ring-0 border border-[#e3d4d5] bg-[#fbf9f9] focus:border-[#e3d4d5] h-14 placeholder:text-[#8b5b5d] p-[15px] text-base font-normal leading-normal"
+                value=""
+              />
+            </label>
+          </div>
+          <p class="text-[#8b5b5d] text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center">
+            We'll send you a text with a verification code. Message and data rates may apply.
+          </p>
+          <div class="flex px-4 py-3 justify-center">
+            <button
+              onclick="validatePhone()"
+              class="flex min-w-[84px] max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-12 px-5 flex-1 bg-[#e8b4b7] text-[#191011] text-base font-bold leading-normal tracking-[0.015em]"
+            >
+              <span class="truncate">Send OTP</span>
+            </button>
+          </div>
+          <p class="text-[#8b5b5d] text-sm font-normal leading-normal pb-3 pt-1 px-4 text-center underline">
+            By continuing, you agree to our Terms of Service and Privacy Policy
+          </p>
+        </div>
+      </div>
+    </div>
+    <script>
+function validatePhone() {
+  var phone = document.getElementById('phone-input').value;
+  if (!/^\d{10}$/.test(phone)) {
+    alert('Please enter a valid 10-digit phone number.');
+    return false;
+  }
+  // Proceed with OTP logic here
+  window.location.href = 'otp.html';
+}
+</script>
+  </body>
+</html>
+

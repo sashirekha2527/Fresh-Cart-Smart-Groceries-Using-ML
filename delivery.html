@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Select Delivery Location</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; }
+    #map { height: 400px; width: 100%; border-radius: 8px; margin-bottom: 16px; }
+    h2 { margin-top: 0; color: #2563eb; }
+    .info { margin-bottom: 16px; color: #555; }
+    #search-bar { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Select Your Delivery Location</h2>
+    <div class="info">Search for your address or drag the marker. The shaded area shows our delivery zone. Route is shown from store to your location.</div>
+    <input id="search-bar" type="text" placeholder="Search for your address..." />
+    <div id="map"></div>
+  </div>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script>
+    // Store location (example: Hyderabad)
+    var storeLatLng = [17.385044, 78.486671];
+    var map = L.map('map').setView(storeLatLng, 13);
+
+    // Add OpenStreetMap tiles
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Add a draggable marker
+    var marker = L.marker(storeLatLng, {draggable:true}).addTo(map)
+      .bindPopup('Drag me to your delivery location!')
+      .openPopup();
+
+    // Delivery area: 7km radius circle
+    var deliveryArea = L.circle(storeLatLng, {
+      color: '#2563eb',
+      fillColor: '#60a5fa',
+      fillOpacity: 0.2,
+      radius: 7000
+    }).addTo(map);
+
+    // Route polyline
+    var routeLine = null;
+
+    // Draw route from store to marker
+    function drawRoute(toLatLng) {
+      // Remove previous route
+      if (routeLine) {
+        map.removeLayer(routeLine);
+      }
+      // OSRM API for route
+      var url = `https://router.project-osrm.org/route/v1/driving/${storeLatLng[1]},${storeLatLng[0]};${toLatLng.lng},${toLatLng.lat}?overview=full&geometries=geojson`;
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          if (data.routes && data.routes.length > 0) {
+            var coords = data.routes[0].geometry.coordinates.map(function(coord) {
+              return [coord[1], coord[0]];
+            });
+            routeLine = L.polyline(coords, {color: 'green', weight: 4}).addTo(map);
+            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
+          }
+        });
+    }
+
+    // Reverse geocode to get address from coordinates
+    function reverseGeocode(lat, lon) {
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.display_name) {
+            document.getElementById('search-bar').value = data.display_name;
+          }
+        });
+    }
+
+    // Marker drag event
+    marker.on('dragend', function(e) {
+      var latlng = marker.getLatLng();
+      alert('Selected Delivery Location:\nLatitude: ' + latlng.lat + '\nLongitude: ' + latlng.lng);
+      drawRoute(latlng);
+      reverseGeocode(latlng.lat, latlng.lng);
+    });
+
+    // Address search (Nominatim)
+    document.getElementById('search-bar').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') {
+        var query = this.value;
+        fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data && data.length > 0) {
+              var lat = parseFloat(data[0].lat);
+              var lon = parseFloat(data[0].lon);
+              map.setView([lat, lon], 15);
+              marker.setLatLng([lat, lon]);
+              drawRoute({lat: lat, lng: lon});
+            } else {
+              alert('Address not found. Please try another search.');
+            }
+          });
+      }
+    });
+
+    // Draw initial route
+    drawRoute(marker.getLatLng());
+    reverseGeocode(storeLatLng[0], storeLatLng[1]);
+  </script>
+</body>
+</html> 

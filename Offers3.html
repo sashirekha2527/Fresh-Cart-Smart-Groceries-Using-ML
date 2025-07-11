@@ -1,0 +1,442 @@
+<html>
+  <head>
+    <link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin="" />
+    <link
+      rel="stylesheet"
+      as="style"
+      onload="this.rel='stylesheet'"
+      href="https://fonts.googleapis.com/css2?display=swap&amp;family=Noto+Sans%3Awght%40400%3B500%3B700%3B900&amp;family=Plus+Jakarta+Sans%3Awght%40400%3B500%3B700%3B800"
+    />
+
+    <title>Stitch Design</title>
+    <link rel="icon" type="image/x-icon" href="data:image/x-icon;base64," />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      let reviews = {};
+      
+      // Initialize reviews data
+      function initializeReviews() {
+        const savedReviews = localStorage.getItem('productReviews');
+        if (savedReviews) {
+          reviews = JSON.parse(savedReviews);
+        }
+      }
+      
+      // Get average rating for a product
+      function getAverageRating(productName) {
+        if (!reviews[productName] || reviews[productName].length === 0) {
+          return 0;
+        }
+        const total = reviews[productName].reduce((sum, review) => sum + review.rating, 0);
+        return (total / reviews[productName].length).toFixed(1);
+      }
+      
+      // Get review count for a product
+      function getReviewCount(productName) {
+        return reviews[productName] ? reviews[productName].length : 0;
+      }
+      
+      // Function to show reviews modal
+      function showReviewsModal(productName) {
+        const productReviews = reviews[productName] || [];
+        const averageRating = getAverageRating(productName);
+        const reviewCount = getReviewCount(productName);
+        
+        let reviewsHTML = '';
+        if (productReviews.length > 0) {
+          reviewsHTML = productReviews.map(review => `
+            <div class="border-b border-gray-200 pb-3 mb-3">
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center gap-2">
+                  <div class="flex text-yellow-500">
+                    ${'★'.repeat(review.rating)}${'☆'.repeat(5-review.rating)}
+                  </div>
+                  <span class="font-medium text-sm">${review.user}</span>
+                </div>
+                <span class="text-xs text-gray-500">${review.date}</span>
+              </div>
+              <p class="text-sm text-gray-600">${review.comment}</p>
+            </div>
+          `).join('');
+        } else {
+          reviewsHTML = '<p class="text-gray-500 text-center py-4">No reviews yet. Be the first to review this product!</p>';
+        }
+        
+        const modalHTML = `
+          <div class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-xl p-6 max-w-lg w-full mx-4 max-h-[80vh] overflow-y-auto">
+              <div class="flex items-center justify-between mb-4">
+                <h2 class="text-xl font-bold text-[#1b0e0e]">Reviews for ${productName}</h2>
+                <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 256 256">
+                    <path d="M205.66,194.34a8,8,0,0,1-11.32,11.32L128,139.31,61.66,205.66a8,8,0,0,1-11.32-11.32L116.69,128,50.34,61.66A8,8,0,0,1,61.66,50.34L128,116.69l66.34-66.35a8,8,0,0,1,11.32,11.32L139.31,128Z"></path>
+                  </svg>
+                </button>
+              </div>
+              <div class="mb-4">
+                <div class="flex items-center gap-3 mb-2">
+                  <div class="flex text-yellow-500 text-2xl">
+                    ${'★'.repeat(Math.floor(averageRating))}${averageRating % 1 >= 0.5 ? '☆' : ''}${'☆'.repeat(5-Math.floor(averageRating)-(averageRating % 1 >= 0.5 ? 1 : 0))}
+                  </div>
+                  <div>
+                    <div class="font-semibold">${averageRating} out of 5</div>
+                    <div class="text-sm text-gray-600">${reviewCount} review${reviewCount !== 1 ? 's' : ''}</div>
+                  </div>
+                </div>
+              </div>
+              <div class="space-y-3">
+                ${reviewsHTML}
+              </div>
+            </div>
+          </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+      }
+      
+      // Function to close modal
+      function closeModal() {
+        const modal = document.querySelector('.fixed.inset-0.bg-black.bg-opacity-50');
+        if (modal) {
+          modal.remove();
+        }
+      }
+      
+      // Function to make product cards clickable
+      function makeProductCardsClickable() {
+        console.log('Making product cards clickable...');
+        
+        // Find ALL product cards using multiple selectors to catch all sections
+        let productCards = [];
+        
+        // Selector 1: Main product cards
+        const mainCards = document.querySelectorAll('.flex.h-full.flex-1.flex-col.gap-4.rounded-lg.min-w-40');
+        productCards = [...mainCards];
+        console.log('Found main product cards:', mainCards.length);
+        
+        // Selector 2: Cards in section containers (Dairy, Snacks, Flowers, etc.)
+        const sectionCards = document.querySelectorAll('.flex.items-stretch.p-4.gap-3 .flex.h-full.flex-1.flex-col.gap-4.rounded-lg.min-w-40');
+        sectionCards.forEach(card => {
+          if (!productCards.includes(card)) {
+            productCards.push(card);
+          }
+        });
+        console.log('Found section product cards:', sectionCards.length);
+        
+        // Selector 3: Any flex container with product-like structure
+        const flexCards = document.querySelectorAll('[class*="flex"][class*="h-full"][class*="flex-col"][class*="gap-4"][class*="rounded-lg"]');
+        flexCards.forEach(card => {
+          if (!productCards.includes(card)) {
+            productCards.push(card);
+          }
+        });
+        console.log('Found flex product cards:', flexCards.length);
+        
+        // Selector 4: Cards with product name elements
+        const allCards = document.querySelectorAll('div');
+        allCards.forEach(card => {
+          const hasProductName = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium') ||
+                                card.querySelector('p[class*="text-base"][class*="font-medium"]');
+          const hasImage = card.querySelector('div[style*="background-image"]');
+          const hasPrice = card.querySelector('p.text-\\[\\#994d51\\].text-sm.font-normal') ||
+                          card.querySelector('p[class*="text-sm"][class*="font-normal"]');
+          
+          if (hasProductName && hasImage && hasPrice && !productCards.includes(card)) {
+            productCards.push(card);
+          }
+        });
+        
+        console.log('Total product cards found:', productCards.length);
+        
+        productCards.forEach((card, index) => {
+          // Skip if already has onclick handler
+          if (card.hasAttribute('onclick') || card.onclick) {
+            console.log(`Card ${index + 1} already has click handler`);
+            return;
+          }
+          
+          // Find product information
+          const productNameElement = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium') || 
+                                   card.querySelector('p[class*="text-base"][class*="font-medium"]') ||
+                                   card.querySelector('p');
+          
+          if (!productNameElement) {
+            console.log(`No product name found in card ${index + 1}`);
+            return;
+          }
+          
+          const productName = productNameElement.textContent.trim();
+          
+          // Find price
+          const priceElement = card.querySelector('p.text-\\[\\#994d51\\].text-sm.font-normal') ||
+                              card.querySelector('p[class*="text-sm"][class*="font-normal"]');
+          const price = priceElement ? priceElement.textContent.trim() : '$0.00';
+          
+          // Find image
+          const imageElement = card.querySelector('div[style*="background-image"]');
+          const image = imageElement ? 
+            imageElement.style.backgroundImage.replace(/url\(['"]?(.*?)['"]?\)/g, '$1') : '';
+          
+          // Find description
+          const descriptionElement = card.querySelector('p.text-\\[\\#666\\].text-xs.leading-normal.mb-2') ||
+                                   card.querySelector('p[class*="text-xs"][class*="leading-normal"]');
+          const description = descriptionElement ? descriptionElement.textContent.trim() : `${productName} - Fresh and high quality`;
+          
+          console.log(`Making card ${index + 1} clickable for: ${productName}`);
+          
+          // Make card clickable
+          card.style.cursor = 'pointer';
+          card.classList.add('hover:shadow-lg', 'transition-shadow');
+          
+          card.onclick = function(e) {
+            // Don't trigger if clicking on buttons or review elements
+            if (e.target.tagName === 'BUTTON' || 
+                e.target.closest('button') || 
+                e.target.closest('.reviews-section')) {
+              return;
+            }
+            
+            console.log(`Clicked on product: ${productName}`);
+            
+            // Create URL parameters
+            const params = new URLSearchParams({
+              name: productName,
+              price: price,
+              image: image,
+              description: description,
+              category: 'General'
+            });
+            window.location.href = `product-detail.html?${params.toString()}`;
+          };
+          
+          // Add hover effect
+          card.style.transition = 'transform 0.2s ease-in-out';
+          card.addEventListener('mouseenter', function() {
+            this.style.transform = 'translateY(-2px)';
+            this.style.boxShadow = '0 4px 12px rgba(0,0,0,0.1)';
+          });
+          
+          card.addEventListener('mouseleave', function() {
+            this.style.transform = 'translateY(0)';
+            this.style.boxShadow = 'none';
+          });
+        });
+        
+        console.log('Finished making product cards clickable');
+      }
+      
+      // Function to automatically add review sections to all product cards
+      function addReviewSectionsToAllProducts() {
+        // Find all product cards
+        const productCards = document.querySelectorAll('.flex.h-full.flex-1.flex-col.gap-4.rounded-lg.min-w-40');
+        
+        productCards.forEach(card => {
+          // Find the product name
+          const productNameElement = card.querySelector('p.text-\\[\\#1b0e0e\\].text-base.font-medium');
+          if (!productNameElement) return;
+          
+          const productName = productNameElement.textContent;
+          
+          // Check if review section already exists
+          const existingReviewSection = card.querySelector('.reviews-section');
+          if (existingReviewSection) return;
+          
+          // Find the description paragraph
+          const descriptionElement = card.querySelector('p.text-\\[\\#666\\].text-xs.leading-normal.mb-2');
+          if (!descriptionElement) return;
+          
+          // Create review section
+          const reviewSection = document.createElement('div');
+          reviewSection.className = 'reviews-section flex items-center gap-2 mb-2';
+          
+          const avgRating = getAverageRating(productName);
+          const reviewCount = getReviewCount(productName);
+          
+          reviewSection.innerHTML = `
+            <div class="flex items-center gap-1">
+              <span class="text-yellow-500 text-xs">★</span>
+              <span class="text-xs text-gray-600" id="${productName.toLowerCase().replace(/\s+/g, '-')}-rating">${avgRating}</span>
+              <span class="text-xs text-gray-500">(${reviewCount})</span>
+            </div>
+            <button onclick="event.stopPropagation(); showReviewsModal('${productName}')" class="text-xs text-[#994d51] hover:underline">View Reviews</button>
+          `;
+          
+          // Insert after description
+          descriptionElement.parentNode.insertBefore(reviewSection, descriptionElement.nextSibling);
+        });
+      }
+      
+      // Initialize on page load
+      window.onload = function() {
+        initializeReviews();
+        setTimeout(() => {
+          addReviewSectionsToAllProducts();
+          makeProductCardsClickable(); // Make all product cards clickable
+        }, 500);
+      };
+    </script>
+  </head>
+  <body>
+    <div class="relative flex size-full min-h-screen flex-col bg-[#fcf8f8] group/design-root overflow-x-hidden" style='font-family: "Plus Jakarta Sans", "Noto Sans", sans-serif;'>
+      <div class="layout-container flex h-full grow flex-col">
+        <header class="flex items-center justify-between whitespace-nowrap border-b border-solid border-b-[#f3e7e8] px-10 py-3">
+          <div class="flex items-center gap-8">
+            <div class="flex items-center gap-4 text-[#1b0e0f]">
+              <div class="size-4">
+                <svg viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <g clip-path="url(#clip0_6_535)">
+                    <path
+                      fill-rule="evenodd"
+                      clip-rule="evenodd"
+                      d="M47.2426 24L24 47.2426L0.757355 24L24 0.757355L47.2426 24ZM12.2426 21H35.7574L24 9.24264L12.2426 21Z"
+                      fill="currentColor"
+                    ></path>
+                  </g>
+                  <defs>
+                    <clipPath id="clip0_6_535"><rect width="48" height="48" fill="white"></rect></clipPath>
+                  </defs>
+                </svg>
+              </div>
+              <h2 class="text-[#1b0e0f] text-lg font-bold leading-tight tracking-[-0.015em]">FreshFoods</h2>
+            </div>
+            <div class="flex items-center gap-9">
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal" href="#">Shop</a>
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal" href="#">Deals</a>
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal" href="#">Picks</a>
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal" href="#">Fresh Finds</a>
+              <a class="text-[#1b0e0f] text-sm font-medium leading-normal" href="#">Pantry</a>
+            </div>
+          </div>
+          <div class="flex flex-1 justify-end gap-8">
+            <label class="flex flex-col min-w-40 !h-10 max-w-64">
+              <div class="flex w-full flex-1 items-stretch rounded-xl h-full">
+                <div
+                  class="text-[#974e52] flex border-none bg-[#f3e7e8] items-center justify-center pl-4 rounded-l-xl border-r-0"
+                  data-icon="MagnifyingGlass"
+                  data-size="24px"
+                  data-weight="regular"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24px" height="24px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M229.66,218.34l-50.07-50.06a88.11,88.11,0,1,0-11.31,11.31l50.06,50.07a8,8,0,0,0,11.32-11.32ZM40,112a72,72,0,1,1,72,72A72.08,72.08,0,0,1,40,112Z"
+                    ></path>
+                  </svg>
+                </div>
+                <input
+                  placeholder="Search"
+                  class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-xl text-[#1b0e0f] focus:outline-0 focus:ring-0 border-none bg-[#f3e7e8] focus:border-none h-full placeholder:text-[#974e52] px-4 rounded-l-none border-l-0 pl-2 text-base font-normal leading-normal"
+                  value=""
+                />
+              </div>
+            </label>
+            <div class="flex gap-2">
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 bg-[#f3e7e8] text-[#1b0e0f] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
+              >
+                <div class="text-[#1b0e0f]" data-icon="Heart" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M178,32c-20.65,0-38.73,8.88-50,23.89C116.73,40.88,98.65,32,78,32A62.07,62.07,0,0,0,16,94c0,70,103.79,126.66,108.21,129a8,8,0,0,0,7.58,0C136.21,220.66,240,164,240,94A62.07,62.07,0,0,0,178,32ZM128,206.8C109.74,196.16,32,147.69,32,94A46.06,46.06,0,0,1,78,48c19.45,0,35.78,10.36,42.6,27a8,8,0,0,0,14.8,0c6.82-16.67,23.15-27,42.6-27a46.06,46.06,0,0,1,46,46C224,147.61,146.24,196.15,128,206.8Z"
+                    ></path>
+                  </svg>
+                </div>
+              </button>
+              <button
+                class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 bg-[#f3e7e8] text-[#1b0e0f] gap-2 text-sm font-bold leading-normal tracking-[0.015em] min-w-0 px-2.5"
+              >
+                <div class="text-[#1b0e0f]" data-icon="ShoppingCart" data-size="20px" data-weight="regular">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20px" height="20px" fill="currentColor" viewBox="0 0 256 256">
+                    <path
+                      d="M222.14,58.87A8,8,0,0,0,216,56H54.68L49.79,29.14A16,16,0,0,0,34.05,16H16a8,8,0,0,0,0,16h18L59.56,172.29a24,24,0,0,0,5.33,11.27,28,28,0,1,0,44.4,8.44h45.42A27.75,27.75,0,0,0,152,204a28,28,0,1,0,28-28H83.17a8,8,0,0,1-7.87-6.57L72.13,152h116a24,24,0,0,0,23.61-19.71l12.16-66.86A8,8,0,0,0,222.14,58.87ZM96,204a12,12,0,1,1-12-12A12,12,0,0,1,96,204Zm96,0a12,12,0,1,1-12-12A12,12,0,0,1,192,204Zm4-74.57A8,8,0,0,1,188.1,136H69.22L57.59,72H206.41Z"
+                    ></path>
+                  </svg>
+                </div>
+              </button>
+            </div>
+            <div
+              class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10"
+              style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuDcnhQZJ7oCteH0QBMa8o9T0c-jOMgzsPo7LHZwO9ZCxvEXbpWeovIEsL9qyHaJ8PS0ZpjB2Y9rCrV5uiXeZv-cIyRO29iVghxKfaznQsKX4xNBeY5eW_anQYax2csPvAzwHilUJcboL8fj-CER5CYVKVTJ238IWZCFUo4W-VmiXIATQ3cqz7P5IiqjqS54HlUtNJpaYhdxbBPjTIEWP75C8b3kYPPkzrPKxvoTRoq9crF43ISuhsE6gdVtRteYkjUC_jMP_PW9h7U");'
+            ></div>
+          </div>
+        </header>
+        <div class="px-40 flex flex-1 justify-center py-5">
+          <div class="layout-content-container flex flex-col max-w-[960px] flex-1">
+            <div class="@container">
+              <div class="@[480px]:px-4 @[480px]:py-3">
+                <div
+                  class="bg-cover bg-center flex flex-col justify-end overflow-hidden bg-[#fcf8f8] @[480px]:rounded-xl min-h-[218px]"
+                  style='background-image: linear-gradient(0deg, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0) 25%), url("https://lh3.googleusercontent.com/aida-public/AB6AXuCyutaG9G75pJ9xH3U1yHIy1nw5WQPdRzgQDm56iYy0ZmsoCiayhCIS7Pf0i41XePcupVxtwT2nHo8Hujit4TMP65v-eMEbNc41Howx8mT1j14Qf1Io_BmSBLQgvbFtcoujCj8NVJzzJvWCSS_5Tmn8vByhM-Sj-j8RbqIySDfxy_JammVDlTh3zkFEmMWnLW364ng8Wd10PkXRo9FOrj1I0YNcaAEfUIjyhHw-d7SD11JuXAS2BjYyq_ZZZIEjzDy6nEzdt7gH-KY");'
+                >
+                  <div class="flex p-4"><p class="text-white tracking-light text-[28px] font-bold leading-tight">Summer Savings</p></div>
+                </div>
+              </div>
+            </div>
+            <div class="flex gap-3 p-3 flex-wrap pr-4">
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">All</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">Fruits</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">Vegetables</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">Dairy</p>
+              </div>
+              <div class="flex h-8 shrink-0 items-center justify-center gap-x-2 rounded-full bg-[#f3e7e8] pl-4 pr-4">
+                <p class="text-[#1b0e0f] text-sm font-medium leading-normal">Meat</p>
+              </div>
+            </div>
+            <div class="grid grid-cols-[repeat(auto-fit,minmax(158px,1fr))] gap-3 p-4">
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuA-uUtQMUByI9UMZUjSWHGKJpZwCqiaWfL5VdsGnFdJCxx1RH2GjBy_3FN1c5WFCvFiOHn6-yKV2K4lr2VhwPVdf1AtOsAKVvZd6Kg5zNRfJtgcDjsBV7NpiNI-O9iI7MRS6Zh_vjOIvKb0-YlWjpbuJJsHiGWKrc-iO72VJ25Ri8nuR0yyx-jIF9Cn1ItWc1bsBCSS6S_uErV2HlPw_6y8mr-GOVJUJP5O3lNXfEDQCor90EU7bqrv2RonuVarg_iz7TF2ZI_drF0");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Organic Strawberries</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$3.99</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$1.99</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB58cepNOcYzeGaWUuH0zhM6z-epQyfDEG06TokI9K1mN4D41do2bJXsthvNP0jZ16hD44qiTjZXWzXPrSq4utoL9b8pG1gQ-rx5qS_e0FzzZ7rlorSLCNF0dQyVIKIVqVahhL8331inA0VQfR2A_EfEZpnf8qOrDn0CYSbADgQVfXDtI4Aw8NL2eUFC0gWk7BqUaARSHe-jCFxkG9xTmonNrTScz-Z_wmuhQ6tWZlzenTvOycfyrO_ecFKpuDy_QxQwQmc2CTKc_g");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Fresh Spinach</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$2.49</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$1.25</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuCq-ArE7yVxeSOnZC3T2Ti-5DvF9B-T1gxW3O-OsmoNkjFMU0f_QA0R2d95oGTJm8eeyMQl1X2o9fgb_-p-f9Ds7vMXfTd3oDxFVIAH6yujNON3swJPfXu31u6dRhrlzZJTLPCFcpToFNz1FUhp8Hlxkp_YDIUjeBRgSKb3uZnldz7QlbxSmSKoqzejDiWimiQztngeVifamgzBCDTAYGSIrYvMjlV1ufH1_E-QgartU8WVCH2XyMHI1YlHzJ3aVt2UGTwkNXDr88I");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Organic Milk</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$4.50</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$2.25</p>
+                </div>
+              </div>
+              <div class="flex flex-col gap-3 pb-3">
+                <div
+                  class="w-full bg-center bg-no-repeat aspect-square bg-cover rounded-xl"
+                  style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuADcwFcz7Jczyt61RcgSdte9MLu3sCHTJEGHqb_D6o-k5kX3kiE2PC-7CM2nJrlPtsIXLxvnvvDlkWzDdsVFbHpfGPDNpiM9wu2mS7XXrvcTs1ly9oeKB9GOLDckSl3rqew0mUCkyqu7HtYYcABp2uOe1ENegn5npgQQHrqM00TQcrSIj1BlezU1fH6VL8k7imdhrP3fIudUxUiOQdd2Xo0xVzIXV55Y4Vs1fnXdtm-4puQmTEP5Z9lFWW68hXYx3wGrt4Z1He-gw4");'
+                ></div>
+                <div>
+                  <p class="text-[#1b0e0f] text-base font-medium leading-normal">Grass-Fed Beef</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$8.99</p>
+                  <p class="text-[#974e52] text-sm font-normal leading-normal">$4.50</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
