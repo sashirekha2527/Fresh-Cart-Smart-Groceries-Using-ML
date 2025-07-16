@@ -3,94 +3,90 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Select Delivery Location</title>
+  <title>Track Your Delivery</title>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/@trevoreyre/autocomplete-js/dist/style.css" />
   <style>
-    body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
-    .container { max-width: 600px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; }
-    #map { height: 400px; width: 100%; border-radius: 8px; margin-bottom: 16px; }
-    h2 { margin-top: 0; color: #2563eb; }
-    .info { margin-bottom: 16px; color: #555; }
-    #search-bar { width: 100%; padding: 8px; margin-bottom: 12px; border: 1px solid #ccc; border-radius: 4px; font-size: 1rem; }
+    #map { height: 60vh; min-height: 320px; border-radius: 1rem; }
+    .leaflet-container { background: #fce7f3 !important; }
+    .autocomplete-result-list { z-index: 99999 !important; }
   </style>
 </head>
-<body>
-  <div class="container">
-    <h2>Select Your Delivery Location</h2>
-    <div class="info">Search for your address or drag the marker. The shaded area shows our delivery zone. Route is shown from store to your location.</div>
-    <input id="search-bar" type="text" placeholder="Search for your address..." />
-    <div id="map"></div>
+<body class="bg-pink-50 min-h-screen flex flex-col">
+  <div class="flex-1 flex flex-col items-center w-full px-2 pt-4">
+    <div class="w-full max-w-md">
+      <h2 class="text-2xl font-bold text-pink-700 mb-2">Track Your Delivery</h2>
+      <input id="search-bar" type="text" placeholder="Search for your address..." class="w-full mb-3 px-4 py-2 border border-pink-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-400" autocomplete="off" />
+      <div id="map" class="w-full mb-2"></div>
+    </div>
+  </div>
+  <!-- Sticky Bottom Panel -->
+  <div class="fixed bottom-0 left-0 w-full flex justify-center z-50">
+    <div class="w-full max-w-md bg-white rounded-t-2xl shadow-lg p-4 border-t border-pink-100">
+      <div class="flex items-center mb-2">
+        <svg class="w-6 h-6 text-pink-400 mr-2" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17.657 16.657L13.414 20.9a2 2 0 01-2.828 0l-4.243-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span id="addressDisplay" class="text-pink-700 font-medium truncate">Set your delivery address</span>
+      </div>
+      <div class="flex items-center justify-between mb-2">
+        <div class="text-gray-500">ETA: <span id="etaValue" class="text-green-600 font-semibold">--</span></div>
+        <div class="text-gray-500">Distance: <span id="distanceValue" class="text-pink-600 font-semibold">--</span></div>
+      </div>
+      <button id="trackBtn" class="w-full bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 rounded-lg transition">Track Order</button>
+      <div id="statusMsg" class="text-center text-sm mt-2 text-gray-500"></div>
+    </div>
   </div>
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/@trevoreyre/autocomplete-js"></script>
   <script>
-    // Store location (example: Hyderabad)
     var storeLatLng = [17.385044, 78.486671];
     var map = L.map('map').setView(storeLatLng, 13);
-
-    // Add OpenStreetMap tiles
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '© OpenStreetMap contributors'
     }).addTo(map);
 
-    // Add a draggable marker
     var marker = L.marker(storeLatLng, {draggable:true}).addTo(map)
       .bindPopup('Drag me to your delivery location!')
       .openPopup();
-
-    // Delivery area: 7km radius circle
-    var deliveryArea = L.circle(storeLatLng, {
-      color: '#2563eb',
-      fillColor: '#60a5fa',
-      fillOpacity: 0.2,
-      radius: 7000
-    }).addTo(map);
-
-    // Route polyline
+    var deliveryPersonMarker = null;
     var routeLine = null;
+    var tracking = false;
+    var trackingInterval = null;
+    var fixedLatLng = {lat: storeLatLng[0], lng: storeLatLng[1]};
+    var fixedAddress = null;
+    var currentOrderId = null;
 
-    // Draw route from store to marker
-    function drawRoute(toLatLng) {
-      // Remove previous route
-      if (routeLine) {
-        map.removeLayer(routeLine);
+    // Photon Autocomplete
+    new Autocomplete('#search-bar', {
+      search: input => {
+        if (input.length < 3) return [];
+        return fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(input)}&lang=en&limit=5`)
+          .then(res => res.json())
+          .then(data => data.features.map(f => ({
+            label: f.properties.name + (f.properties.city ? ', ' + f.properties.city : '') + (f.properties.state ? ', ' + f.properties.state : '') + (f.properties.country ? ', ' + f.properties.country : ''),
+            value: f
+          })));
+      },
+      onSubmit: result => {
+        if (!result) return;
+        var coords = result.value.geometry.coordinates;
+        var lat = coords[1];
+        var lng = coords[0];
+        map.setView([lat, lng], 16);
+        marker.setLatLng([lat, lng]);
+        updateAddressDisplay(result.label);
+        fixedLatLng = {lat: lat, lng: lng};
+      },
+      renderResult: (result, props) => {
+        if (!result) return '';
+        return `<li ${props}>${result.label}</li>`;
       }
-      // OSRM API for route
-      var url = `https://router.project-osrm.org/route/v1/driving/${storeLatLng[1]},${storeLatLng[0]};${toLatLng.lng},${toLatLng.lat}?overview=full&geometries=geojson`;
-      fetch(url)
-        .then(response => response.json())
-        .then(data => {
-          if (data.routes && data.routes.length > 0) {
-            var coords = data.routes[0].geometry.coordinates.map(function(coord) {
-              return [coord[1], coord[0]];
-            });
-            routeLine = L.polyline(coords, {color: 'green', weight: 4}).addTo(map);
-            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
-          }
-        });
-    }
-
-    // Reverse geocode to get address from coordinates
-    function reverseGeocode(lat, lon) {
-      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`)
-        .then(response => response.json())
-        .then(data => {
-          if (data && data.display_name) {
-            document.getElementById('search-bar').value = data.display_name;
-          }
-        });
-    }
-
-    // Marker drag event
-    marker.on('dragend', function(e) {
-      var latlng = marker.getLatLng();
-      alert('Selected Delivery Location:\nLatitude: ' + latlng.lat + '\nLongitude: ' + latlng.lng);
-      drawRoute(latlng);
-      reverseGeocode(latlng.lat, latlng.lng);
     });
 
-    // Address search (Nominatim)
+    // Nominatim fallback for Enter key
     document.getElementById('search-bar').addEventListener('keydown', function(e) {
       if (e.key === 'Enter') {
+        e.preventDefault();
         var query = this.value;
         fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
           .then(response => response.json())
@@ -98,19 +94,151 @@
             if (data && data.length > 0) {
               var lat = parseFloat(data[0].lat);
               var lon = parseFloat(data[0].lon);
-              map.setView([lat, lon], 15);
+              map.setView([lat, lon], 16);
               marker.setLatLng([lat, lon]);
-              drawRoute({lat: lat, lng: lon});
+              updateAddressDisplay(data[0].display_name);
+              fixedLatLng = {lat: lat, lng: lon};
             } else {
-              alert('Address not found. Please try another search.');
+              showStatusMsg('Address not found. Please try another search or drag the pin to your location.', true);
             }
           });
       }
     });
 
-    // Draw initial route
-    drawRoute(marker.getLatLng());
-    reverseGeocode(storeLatLng[0], storeLatLng[1]);
+    // Marker drag event
+    marker.on('dragend', function(e) {
+      var latlng = marker.getLatLng();
+      fixedLatLng = {lat: latlng.lat, lng: latlng.lng};
+      // Try reverse geocoding with Nominatim
+      fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latlng.lat}&lon=${latlng.lng}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.display_name) {
+            updateAddressDisplay(data.display_name);
+          } else {
+            updateAddressDisplay('Custom location (no address found)');
+          }
+        });
+      showStatusMsg('Pin moved. This location will be used for delivery.', false);
+    });
+
+    function updateAddressDisplay(address) {
+      document.getElementById('addressDisplay').textContent = address;
+      fixedAddress = address;
+    }
+
+    function showStatusMsg(msg, isError) {
+      var el = document.getElementById('statusMsg');
+      el.textContent = msg;
+      el.className = 'text-center text-sm mt-2 ' + (isError ? 'text-red-500' : 'text-gray-500');
+    }
+
+    // Calculate distance between two points
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // Draw route from delivery person to fixed address
+    function drawDeliveryRoute(deliveryLatLng) {
+      if (!fixedLatLng) return;
+      if (routeLine) map.removeLayer(routeLine);
+      var url = `https://router.project-osrm.org/route/v1/driving/${deliveryLatLng[1]},${deliveryLatLng[0]};${fixedLatLng.lng},${fixedLatLng.lat}?overview=full&geometries=geojson`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (data.routes && data.routes.length > 0) {
+            var coords = data.routes[0].geometry.coordinates.map(function(coord) {
+              return [coord[1], coord[0]];
+            });
+            routeLine = L.polyline(coords, {color: 'pink', weight: 5}).addTo(map);
+            map.fitBounds(routeLine.getBounds(), {padding: [50, 50]});
+            var eta = Math.round(data.routes[0].duration / 60);
+            document.getElementById('etaValue').textContent = eta + ' min';
+          } else {
+            document.getElementById('etaValue').textContent = '--';
+          }
+        })
+        .catch(() => {
+          document.getElementById('etaValue').textContent = '--';
+        });
+    }
+
+    // Track Order button
+    document.getElementById('trackBtn').addEventListener('click', function() {
+      if (!fixedLatLng) {
+        showStatusMsg('Please set your delivery address first.', true);
+        return;
+      }
+      if (tracking) {
+        // Stop tracking
+        tracking = false;
+        this.textContent = 'Track Order';
+        showStatusMsg('Tracking stopped.', false);
+        if (trackingInterval) clearInterval(trackingInterval);
+        if (deliveryPersonMarker) { map.removeLayer(deliveryPersonMarker); deliveryPersonMarker = null; }
+        if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+        document.getElementById('distanceValue').textContent = '--';
+        document.getElementById('etaValue').textContent = '--';
+        return;
+      }
+      // Ask for order ID
+      let orderId = prompt('Enter your Order ID to track delivery:');
+      if (!orderId) {
+        showStatusMsg('Order ID is required.', true);
+        return;
+      }
+      currentOrderId = orderId;
+      tracking = true;
+      this.textContent = 'Stop Tracking';
+      showStatusMsg('Tracking started...', false);
+      if (trackingInterval) clearInterval(trackingInterval);
+      trackingInterval = setInterval(updateDeliveryPersonLocation, 5000);
+      updateDeliveryPersonLocation();
+    });
+
+    function updateDeliveryPersonLocation() {
+      if (!currentOrderId || !fixedLatLng) return;
+      fetch(`http://localhost:4000/location/${currentOrderId}`)
+        .then(res => res.json())
+        .then(loc => {
+          if (!loc.lat || !loc.lng) {
+            document.getElementById('distanceValue').textContent = 'Waiting...';
+            document.getElementById('etaValue').textContent = '--';
+            return;
+          }
+          // Add or update delivery person marker
+          if (!deliveryPersonMarker) {
+            deliveryPersonMarker = L.marker([loc.lat, loc.lng], {
+              icon: L.icon({
+                iconUrl: 'https://cdn-icons-png.flaticon.com/512/1946/1946429.png',
+                iconSize: [32, 32],
+                iconAnchor: [16, 32]
+              })
+            }).addTo(map).bindPopup('Delivery Person');
+          } else {
+            deliveryPersonMarker.setLatLng([loc.lat, loc.lng]);
+          }
+          // Calculate distance
+          const distance = calculateDistance(loc.lat, loc.lng, fixedLatLng.lat, fixedLatLng.lng);
+          document.getElementById('distanceValue').textContent = distance.toFixed(2) + ' km';
+          // Draw route and update ETA
+          drawDeliveryRoute([loc.lat, loc.lng]);
+        })
+        .catch(() => {
+          document.getElementById('distanceValue').textContent = 'Error';
+          document.getElementById('etaValue').textContent = '--';
+        });
+    }
+
+    // Initial address
+    updateAddressDisplay('Set your delivery address');
   </script>
 </body>
 </html> 

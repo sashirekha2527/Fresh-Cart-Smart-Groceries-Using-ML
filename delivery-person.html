@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery Person Location Updater</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f8fafc; margin: 0; padding: 0; }
+    .container { max-width: 400px; margin: 40px auto; background: #fff; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); padding: 24px; }
+    h2 { color: #2563eb; }
+    label { display: block; margin-bottom: 8px; }
+    input[type="text"] { width: 100%; padding: 8px; margin-bottom: 16px; border: 1px solid #ccc; border-radius: 4px; }
+    button { background: #2563eb; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; }
+    .status { margin-top: 16px; color: #555; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Delivery Person Location Updater</h2>
+    <form id="orderForm">
+      <label for="orderId">Order ID:</label>
+      <input type="text" id="orderId" required />
+      <button type="submit">Start Sending Location</button>
+    </form>
+    <div class="status" id="status"></div>
+  </div>
+  <script>
+    let intervalId = null;
+    let orderId = null;
+    const statusDiv = document.getElementById('status');
+
+    document.getElementById('orderForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      orderId = document.getElementById('orderId').value.trim();
+      if (!orderId) {
+        statusDiv.textContent = 'Please enter a valid Order ID.';
+        return;
+      }
+      statusDiv.textContent = 'Starting location updates...';
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(sendLocation, 5000);
+      sendLocation();
+    });
+
+    function sendLocation() {
+      if (!navigator.geolocation) {
+        statusDiv.textContent = 'Geolocation is not supported by your browser.';
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(function(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        fetch('http://localhost:4000/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ orderId, lat, lng })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            statusDiv.textContent = `Location sent! (Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}) at ${new Date().toLocaleTimeString()}`;
+          } else {
+            statusDiv.textContent = 'Error: ' + (data.error || 'Unknown error');
+          }
+        })
+        .catch(err => {
+          statusDiv.textContent = 'Network error: ' + err.message;
+        });
+      }, function(error) {
+        statusDiv.textContent = 'Geolocation error: ' + error.message;
+      });
+    }
+  </script>
+</body>
+</html> 

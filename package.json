@@ -1,0 +1,28 @@
+{
+  "name": "grocery-ecommerce",
+  "version": "1.0.0",
+  "description": "A modern, responsive grocery e-commerce web application",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx http-server -p 3000 -o",
+    "start": "npx http-server -p 3000",
+    "build": "echo 'No build step required for static HTML project'",
+    "serve": "npx http-server -p 3000 -c-1"
+  },
+  "keywords": [
+    "grocery",
+    "ecommerce",
+    "html",
+    "css",
+    "javascript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
+}
